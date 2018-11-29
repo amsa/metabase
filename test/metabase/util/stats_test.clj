@@ -11,6 +11,9 @@
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
+(expect
+  (println "WOW"))
+
 #_(expect "0" (#'stats-util/bin-micro-number 0))
 #_(expect "1" (#'stats-util/bin-micro-number 1))
 #_(expect "2" (#'stats-util/bin-micro-number 2))

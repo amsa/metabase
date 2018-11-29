@@ -60,8 +60,10 @@
   (isa? driver/hierarchy driver ::test-extensions))
 
 (defn add-test-extensions! [driver]
-  (driver/add-parent! driver ::test-extensions)
-  (println "Added test extensions for" driver "💯"))
+  ;; no-op during AOT compilation
+  (when-not *compile-files*
+    (driver/add-parent! driver ::test-extensions)
+    (println "Added test extensions for" driver "💯")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -367,7 +369,12 @@
 (def ^:private edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
 
 (defn slurp-edn-table-def [dbname]
-  (edn/read-string (slurp (str edn-definitions-dir dbname ".edn"))))
+  ;; disabled for now when AOT compiling tests because this reads the entire file in which results in Method code too
+  ;; large errors
+  ;;
+  ;; The fix would be to delay reading the code until runtime
+  (when-not *compile-files*
+    (edn/read-string (slurp (str edn-definitions-dir dbname ".edn")))))
 
 (defn update-table-def
   "Function useful for modifying a table definition before it's applied. Will invoke `UPDATE-TABLE-DEF-FN` on the vector

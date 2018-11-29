@@ -1,6 +1,7 @@
 \#*\#
 .\#*
 /target
+/modules/drivers/*/target
 /classes
 /checkouts
 pom.xml

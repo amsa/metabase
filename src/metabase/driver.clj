@@ -81,15 +81,16 @@
   `register!` below (for parent drivers) and by `driver.u/database->driver` for drivers that have not yet been
   loaded."
   [driver]
-  (when-not (registered? driver)
-    (du/profile (trs "Load driver {0}" driver)
-     (require-driver-ns driver)
-     ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
-     (when-not (registered? driver)
-       (require-driver-ns driver :reload)
-       ;; if *still* not registered, throw an Exception
-       (when-not (registered? driver)
-         (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver)))))))))
+  (when-not *compile-files*
+    (when-not (registered? driver)
+      (du/profile (trs "Load driver {0}" driver)
+        (require-driver-ns driver)
+        ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
+        (when-not (registered? driver)
+          (require-driver-ns driver :reload)
+          ;; if *still* not registered, throw an Exception
+          (when-not (registered? driver)
+            (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
 
 (defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
@@ -124,9 +125,10 @@
 (defn add-parent!
   "Add a new parent to `driver`."
   [driver new-parent]
-  (load-driver-namespace-if-needed driver)
-  (load-driver-namespace-if-needed new-parent)
-  (alter-var-root #'hierarchy derive driver new-parent))
+  (when-not *compile-files*
+    (load-driver-namespace-if-needed driver)
+    (load-driver-namespace-if-needed new-parent)
+    (alter-var-root #'hierarchy derive driver new-parent)))
 
 (defn register!
   "Register a driver.
@@ -153,22 +155,24 @@
   `::concrete`."
   [driver & {:keys [parent abstract?]}]
   {:pre [(keyword? driver)]}
-  ;; validate that the registration isn't stomping on things
-  (check-abstractness-hasnt-changed driver abstract?)
-  ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
-  (let [derive! (partial alter-var-root #'hierarchy derive driver)]
-    (derive! ::driver)
-    (when-not abstract?
-      (derive! ::concrete))
-    (doseq [parent (cond
-                     (coll? parent) parent
-                     parent         [parent])
-            :when  parent]
-      (load-driver-namespace-if-needed parent)
-      (derive! parent)))
-  ;; ok, log our great success
-  (when-not (metabase.driver/abstract? driver)
-    (log/info (trs "Registered driver {0} {1}" (u/format-color 'blue driver) (u/emoji "🚚")))))
+  ;; no-op during compilation.
+  (when-not *compile-files*
+    ;; validate that the registration isn't stomping on things
+    (check-abstractness-hasnt-changed driver abstract?)
+    ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
+    (let [derive! (partial alter-var-root #'hierarchy derive driver)]
+      (derive! ::driver)
+      (when-not abstract?
+        (derive! ::concrete))
+      (doseq [parent (cond
+                       (coll? parent) parent
+                       parent         [parent])
+              :when  parent]
+        (load-driver-namespace-if-needed parent)
+        (derive! parent)))
+    ;; ok, log our great success
+    (when-not (metabase.driver/abstract? driver)
+      (log/info (trs "Registered driver {0} {1}" (u/format-color 'blue driver) (u/emoji "🚚"))))))
 
 (defn dispatch-on-driver
   "Dispatch function to use for driver multimethods. Dispatches on first arg, a driver keyword; loads that driver's

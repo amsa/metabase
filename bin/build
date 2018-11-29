@@ -50,7 +50,7 @@ sample-dataset() {
 
 uberjar() {
     echo "Running 'lein uberjar'..."
-    lein uberjar
+    lein clean && lein uberjar
 }
 
 all() {
